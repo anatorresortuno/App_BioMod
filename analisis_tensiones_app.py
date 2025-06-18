@@ -179,4 +179,16 @@ scatter_filtrados = go.Scatter3d(
     name=f'Nodes amb tensió entre {lower:.3f} i {upper:.3f}'
 )
 
-fig = go.Figure(data=[
+fig = go.Figure(data=[=[scatter_all, scatter_filtrados])
+
+fig.update_layout(
+    title=f"Nodes amb tensió entre {lower:.3f} i {upper:.3f} (Total: {num_filtrados})",
+    scene=dict(
+        xaxis_title='X [mm]',
+        yaxis_title='Y [mm]',
+        zaxis_title='Z [mm]'
+    ),
+    legend=dict(x=0, y=1)
+)
+
+st.plotly_chart(fig, use_container_width=True)
