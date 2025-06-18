@@ -179,3 +179,4 @@ if not df_range.empty:
     fig_range.add_trace(go.Scatter3d(
         x=df_range['posx'], y=df_range['posy'], z=df_range
 ::contentReference[oaicite:0]{index=0}
+    ))
