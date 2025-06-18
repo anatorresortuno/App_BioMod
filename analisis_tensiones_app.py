@@ -216,6 +216,32 @@ if contact_nodes_1:
     st.write(f"S'han trobat **{len(df_contact_1)}** nodes de PID 1 amb contacte dins {dist_umbral} mm amb PID 2.")
     st.dataframe(df_contact_1)
 
+    # Afegim aquí la taula amb parelles de nodes pròxims
+    pares_cercans = []
+    for idx_1, veïns_2 in enumerate(contact_idx_1):
+        for idx_2 in veïns_2:
+            node_1 = df_pid_1.iloc[idx_1]
+            node_2 = df_pid_2.iloc[idx_2]
+            dist = np.linalg.norm(
+                np.array([node_1['posx'], node_1['posy'], node_1['posz']]) -
+                np.array([node_2['posx'], node_2['posy'], node_2['posz']])
+            )
+            if dist <= dist_umbral:
+                pares_cercans.append({
+                    'Node PID 1 ID': node_1.name,
+                    'PID 1 posx': node_1['posx'],
+                    'PID 1 posy': node_1['posy'],
+                    'PID 1 posz': node_1['posz'],
+                    'Node PID 2 ID': node_2.name,
+                    'PID 2 posx': node_2['posx'],
+                    'PID 2 posy': node_2['posy'],
+                    'PID 2 posz': node_2['posz'],
+                    'Distància (mm)': dist
+                })
+    df_pares_cercans = pd.DataFrame(pares_cercans)
+    st.subheader("📋 Taula de nodes pròxims entre PID 1 i PID 2")
+    st.dataframe(df_pares_cercans)
+
     # Mostrar 3D amb els contactes destacats
     fig_contact = go.Figure()
 
