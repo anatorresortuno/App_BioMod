@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as stats
-from scipy.spatial import cKDTree  # Para buscar proximidades eficientes
+from scipy.spatial import cKDTree
 
 st.set_page_config(page_title="Análisis Von Mises", layout="wide")
 
@@ -27,7 +27,7 @@ except Exception as e:
     st.stop()
 
 # ✅ Verificació de columnes necessàries
-required_cols = ['posx', 'posy', 'posz', 'FunctionTop:StressesVon MisesCentroid']
+required_cols = ['posx', 'posy', 'posz', 'FunctionTop:StressesVon MisesCentroid', 'Pid']
 missing = [col for col in required_cols if col not in df.columns]
 if missing:
     st.error(f"Falten les columnes necessàries: {', '.join(missing)}")
@@ -37,23 +37,17 @@ if missing:
 st.success("Arxiu carregat correctament 🎉")
 st.dataframe(df.head())
 
-# === Selector PID múltiple (dos PIDs para comparar) ===
-if 'Pid' in df.columns:
-    pids = df['Pid'].unique().tolist()
-    pids.sort()
+# === Selector PID múltiple (dos PIDs per comparar) ===
+pids = df['Pid'].unique().tolist()
+pids.sort()
 
-    pid_1 = st.selectbox("Selecciona primer PID:", pids)
-    pid_2 = st.selectbox("Selecciona segon PID:", pids)
-    
-    df_pid_1 = df[df['Pid'] == pid_1]
-    df_pid_2 = df[df['Pid'] == pid_2]
-else:
-    st.warning("No s'ha trobat la columna 'Pid'. S'analitzaran tots els nodes junts.")
-    df_pid_1 = df.copy()
-    df_pid_2 = df.copy()
-    pid_1 = pid_2 = "Tots (Ambos)"
+pid_1 = st.selectbox("Selecciona primer PID:", pids, index=0)
+pid_2 = st.selectbox("Selecciona segon PID:", pids, index=1)
 
-# Estadísticas básicas para PID 1
+df_pid_1 = df[df['Pid'] == pid_1]
+df_pid_2 = df[df['Pid'] == pid_2]
+
+# Estadísticas bàsicas per PID 1
 st.subheader("📊 Estadístiques bàsiques PID 1")
 data_1 = df_pid_1['FunctionTop:StressesVon MisesCentroid']
 st.write(f"**PID 1 seleccionat: {pid_1}**")
@@ -67,11 +61,11 @@ st.write(data_1.quantile([0.25, 0.5, 0.75, 0.95]))
 st.write(f"Asimetria (skewness): {stats.skew(data_1):.4f}")
 st.write(f"Kurtosis: {stats.kurtosis(data_1):.4f}")
 
-# Selector de escala de color para la gráfica
+# Selector de escala de color per la gràfica
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
 color_scale_sel = st.selectbox("Selecciona escala de color per la tensió Von Mises:", color_scales, index=0)
 
-# Selecciona rango para el color scale
+# Selecciona rang per a la escala de color
 min_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].min())
 max_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].max())
 
@@ -84,11 +78,11 @@ color_range_min, color_range_max = st.slider(
     step=0.01
 )
 
-# Selector de percentatge de mostra (usar para PID 1 per mostrar en 3D)
+# Selector de percentatge de mostra (usar per PID 1 per mostrar en 3D)
 porcentaje = st.slider("Selecciona percentatge de mostra (PID 1)", 0.01, 1.0, 1.0)
 df_sample_1 = df_pid_1.sample(frac=porcentaje, random_state=42)
 
-# Gràfica 3D per a PID 1
+# Gràfica 3D per PID 1
 st.subheader("🧱 Gràfica 3D - Tensions Von Mises PID 1")
 fig1 = px.scatter_3d(
     df_sample_1,
@@ -104,15 +98,15 @@ st.plotly_chart(fig1, use_container_width=True)
 
 st.subheader("🔎 Zones de contacte entre PID 1 i PID 2")
 
-# Umbral de distancia per a considerar contacte (en les mateixes unitats que posx,y,z, ej mm)
-dist_umbral = st.slider("Distància màxima per a considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
+# Umbral de distància per considerar contacte (en les mateixes unitats que posx,y,z, ej mm)
+dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
 
 # Construïm arbres KD per a cerca ràpida
 coords_1 = df_pid_1[['posx', 'posy', 'posz']].values
 coords_2 = df_pid_2[['posx', 'posy', 'posz']].values
 
 tree_2 = cKDTree(coords_2)
-# Trobar índexs de punts en pid_1 que tenen veïns en pid_2 dins del llindar
+# Trobar índexs de punts en pid_1 que tenen veïns en pid_2 dins del umbral
 contact_idx_1 = tree_2.query_ball_point(coords_1, r=dist_umbral)
 
 # Filtrar nodes que tenen veïns en PID 2
@@ -165,4 +159,27 @@ else:
 
 # --- Fi zones de contacte ---
 
+# --- Nodos dins d'un rang de tensió Von Mises ---
 
+st.subheader("🔍 Nodos dins d'un rang de tensió Von Mises")
+
+# Definir rang de tensió Von Mises
+tension_min = st.slider("Tensió mínima Von Mises (MPa)", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
+tension_max = st.slider("Tensió màxima Von Mises (MPa)", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
+
+# Filtrar nodes dins del rang
+df_in_range = df_pid_1[(df_pid_1['FunctionTop:StressesVon MisesCentroid'] >= tension_min) &
+                       (df_pid_1['FunctionTop:StressesVon MisesCentroid'] <= tension_max)]
+
+if not df_in_range.empty:
+    st.write(f"S'han trobat **{len(df_in_range)}** nodes amb tensió Von Mises entre {tension_min} i {tension_max} MPa.")
+    st.dataframe(df_in_range)
+
+    # Mostrar 3D amb els nodes dins del rang en negre
+    fig_range = go.Figure()
+
+    # Tots PID 1 en gris clar
+    fig_range.add_trace(go.Scatter3d(
+        x=df_pid_1['posx
+::contentReference[oaicite:0]{index=0}
+ 
