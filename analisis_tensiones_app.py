@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as stats
-from scipy.spatial import cKDTree  # Para buscar proximidades eficientes
+from scipy.spatial import cKDTree  # Para búsqueda eficiente de proximidades
 
 st.set_page_config(page_title="Análisis Von Mises", layout="wide")
 
@@ -61,7 +61,7 @@ else:
     df_pid_2 = df.copy()
     pid_1 = pid_2 = "Tots (Ambos)"
 
-# Estadísticas básicas para PID 1 (puedes replicar para PID 2 si quieres)
+# Estadísticas básicas para PID 1
 st.subheader("📊 Estadístiques bàsiques PID 1")
 data_1 = df_pid_1['FunctionTop:StressesVon MisesCentroid']
 st.write(f"**PID 1 seleccionat: {pid_1}**")
@@ -79,6 +79,19 @@ st.write(f"Kurtosis: {stats.kurtosis(data_1):.4f}")
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
 color_scale_sel = st.selectbox("Selecciona escala de color per la tensió Von Mises:", color_scales, index=0)
 
+# Seleccionar rango para el color scale
+min_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].min())
+max_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].max())
+
+st.write("### Ajusta el rango de valores para la escala de color (Von Mises)")
+
+color_range_min, color_range_max = st.slider(
+    "Selecciona rango de color para la escala de Von Mises",
+    min_val, max_val,
+    (min_val, max_val),
+    step=0.01
+)
+
 # Selector de percentatge de mostra (usar para PID 1 para mostrar en 3D)
 porcentaje = st.slider("Selecciona percentatge de mostra (PID 1)", 0.01, 1.0, 1.0)
 df_sample_1 = df_pid_1.sample(frac=porcentaje, random_state=42)
@@ -90,6 +103,7 @@ fig1 = px.scatter_3d(
     x='posx', y='posy', z='posz',
     color='FunctionTop:StressesVon MisesCentroid',
     color_continuous_scale=color_scale_sel,
+    range_color=[color_range_min, color_range_max],
     title=f'Distribució de Tensions Von Mises PID {pid_1}'
 )
 st.plotly_chart(fig1, use_container_width=True)
@@ -140,7 +154,7 @@ if contact_nodes_1:
     fig_contact.add_trace(go.Scatter3d(
         x=df_contact_1['posx'], y=df_contact_1['posy'], z=df_contact_1['posz'],
         mode='markers',
-        marker=dict(size=5, color='red', symbol='circle'),
+        marker=dict(size=6, color='red', symbol='circle'),
         name='Nodes de contacte PID 1'
     ))
 
@@ -157,5 +171,5 @@ if contact_nodes_1:
 else:
     st.write(f"No s'han trobat nodes de PID 1 en contacte amb PID 2 dins la distància de {dist_umbral} mm.")
 
-# --- Fin zones de contacto ---
+# --- Fi zones de contacte ---
 
