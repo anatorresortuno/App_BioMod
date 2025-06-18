@@ -1,0 +1,13 @@
+[theme]
+primaryColor = "#4a90e2"              # Blau suau i modern
+backgroundColor = "#f9f9f9"           # Fons clar i net
+secondaryBackgroundColor = "#e0e6f1"  # Fons suau per a components secundaris
+textColor = "#333333"                 # Text fosc però suau
+font = "sans serif"                   # Font clara i neta
+
+[server]
+headless = true                      # Perquè funcioni en servidors
+enableCORS = false                   # Evita errors de CORS si cal
+
+[style]
+# Streamlit no té moltes opcions CSS aquí, però amb [theme] ja millorem molt
