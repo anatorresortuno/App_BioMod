@@ -37,20 +37,14 @@ if missing:
 st.success("Arxiu carregat correctament 🎉")
 st.dataframe(df.head())
 
-# === Selector PID múltiple (dos PIDs per comparar) ===
-pids = df['Pid'].unique().tolist()
-pids.sort()
+# --- Selección de PID 1 y PID 2 ---
+df_pid_1 = df[df['Pid'] == 1]
+df_pid_2 = df[df['Pid'] == 2]
 
-pid_1 = st.selectbox("Selecciona primer PID:", pids, index=0)
-pid_2 = st.selectbox("Selecciona segon PID:", pids, index=1)
-
-df_pid_1 = df[df['Pid'] == pid_1]
-df_pid_2 = df[df['Pid'] == pid_2]
-
-# Estadísticas bàsicas per PID 1
+# Estadísticas básicas para PID 1
 st.subheader("📊 Estadístiques bàsiques PID 1")
 data_1 = df_pid_1['FunctionTop:StressesVon MisesCentroid']
-st.write(f"**PID 1 seleccionat: {pid_1}**")
+st.write(f"**PID 1 seleccionat: 1**")
 st.write(f"Màxim: {data_1.max():.4f} MPa")
 st.write(f"Mínim: {data_1.min():.4f} MPa")
 st.write(f"Mitja: {data_1.mean():.4f} MPa")
@@ -61,16 +55,15 @@ st.write(data_1.quantile([0.25, 0.5, 0.75, 0.95]))
 st.write(f"Asimetria (skewness): {stats.skew(data_1):.4f}")
 st.write(f"Kurtosis: {stats.kurtosis(data_1):.4f}")
 
-# Selector de escala de color per la gràfica
+# Selector de escala de color para la gráfica
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
 color_scale_sel = st.selectbox("Selecciona escala de color per la tensió Von Mises:", color_scales, index=0)
 
-# Selecciona rang per a la escala de color
+# Selecciona rango para el color scale
 min_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].min())
 max_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].max())
 
 st.write("### Ajusta el rang de valors per a l'escala de color (Von Mises)")
-
 color_range_min, color_range_max = st.slider(
     "Selecciona rang de color per a l'escala de Von Mises",
     min_val, max_val,
@@ -78,7 +71,7 @@ color_range_min, color_range_max = st.slider(
     step=0.01
 )
 
-# Selector de percentatge de mostra (usar per PID 1 per mostrar en 3D)
+# Selector de percentatge de mostra (usar para PID 1 per mostrar en 3D)
 porcentaje = st.slider("Selecciona percentatge de mostra (PID 1)", 0.01, 1.0, 1.0)
 df_sample_1 = df_pid_1.sample(frac=porcentaje, random_state=42)
 
@@ -90,12 +83,11 @@ fig1 = px.scatter_3d(
     color='FunctionTop:StressesVon MisesCentroid',
     color_continuous_scale=color_scale_sel,
     range_color=[color_range_min, color_range_max],
-    title=f'Distribució de Tensions Von Mises PID {pid_1}'
+    title=f'Distribució de Tensions Von Mises PID 1'
 )
 st.plotly_chart(fig1, use_container_width=True)
 
 # --- Zones de contacte entre PID 1 i PID 2 ---
-
 st.subheader("🔎 Zones de contacte entre PID 1 i PID 2")
 
 # Umbral de distància per considerar contacte (en les mateixes unitats que posx,y,z, ej mm)
@@ -125,7 +117,7 @@ if contact_nodes_1:
         x=df_pid_1['posx'], y=df_pid_1['posy'], z=df_pid_1['posz'],
         mode='markers',
         marker=dict(size=2, color='lightgray', opacity=0.3),
-        name=f'PID 1 ({pid_1})'
+        name=f'PID 1 (1)'
     ))
 
     # Tots PID 2 en blau clar
@@ -133,10 +125,10 @@ if contact_nodes_1:
         x=df_pid_2['posx'], y=df_pid_2['posy'], z=df_pid_2['posz'],
         mode='markers',
         marker=dict(size=2, color='lightblue', opacity=0.3),
-        name=f'PID 2 ({pid_2})'
+        name=f'PID 2 (2)'
     ))
 
-    # Nodos de contacte PID 1 en vermell
+    # Nodes de contacte PID 1 en vermell
     fig_contact.add_trace(go.Scatter3d(
         x=df_contact_1['posx'], y=df_contact_1['posy'], z=df_contact_1['posz'],
         mode='markers',
@@ -145,7 +137,7 @@ if contact_nodes_1:
     ))
 
     fig_contact.update_layout(
-        title=f'Zones de contacte entre PID {pid_1} i PID {pid_2} (distància ≤ {dist_umbral} mm)',
+        title=f'Zones de contacte entre PID 1 i PID 2 (distància ≤ {dist_umbral} mm)',
         scene=dict(
             xaxis_title='X [mm]',
             yaxis_title='Y [mm]',
@@ -157,29 +149,33 @@ if contact_nodes_1:
 else:
     st.write(f"No s'han trobat nodes de PID 1 en contacte amb PID 2 dins la distància de {dist_umbral} mm.")
 
-# --- Fi zones de contacte ---
+# --- Destacar nodes dins d'un rang de tensions Von Mises ---
+st.subheader("⚫ Destacar nodes dins d'un rang de tensions Von Mises")
 
-# --- Nodos dins d'un rang de tensió Von Mises ---
-
-st.subheader("🔍 Nodos dins d'un rang de tensió Von Mises")
-
-# Definir rang de tensió Von Mises
-tension_min = st.slider("Tensió mínima Von Mises (MPa)", min_value=0.0, max_value=10.0, value=0.5, step=0.1)
-tension_max = st.slider("Tensió màxima Von Mises (MPa)", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
+# Definir rang de tensions Von Mises per destacar
+min_von_mises = st.number_input("Valor mínim de Von Mises (MPa)", min_value=0.0, value=0.5, step=0.01)
+max_von_mises = st.number_input("Valor màxim de Von Mises (MPa)", min_value=0.0, value=1.0, step=0.01)
 
 # Filtrar nodes dins del rang
-df_in_range = df_pid_1[(df_pid_1['FunctionTop:StressesVon MisesCentroid'] >= tension_min) &
-                       (df_pid_1['FunctionTop:StressesVon MisesCentroid'] <= tension_max)]
+df_range = df_pid_1[(df_pid_1['FunctionTop:StressesVon MisesCentroid'] >= min_von_mises) &
+                    (df_pid_1['FunctionTop:StressesVon MisesCentroid'] <= max_von_mises)]
 
-if not df_in_range.empty:
-    st.write(f"S'han trobat **{len(df_in_range)}** nodes amb tensió Von Mises entre {tension_min} i {tension_max} MPa.")
-    st.dataframe(df_in_range)
+if not df_range.empty:
+    st.write(f"S'han trobat **{len(df_range)}** nodes de PID 1 amb tensions Von Mises entre {min_von_mises} i {max_von_mises} MPa.")
+    st.dataframe(df_range)
 
     # Mostrar 3D amb els nodes dins del rang en negre
     fig_range = go.Figure()
 
     # Tots PID 1 en gris clar
     fig_range.add_trace(go.Scatter3d(
-        x=df_pid_1['posx
+        x=df_pid_1['posx'], y=df_pid_1['posy'], z=df_pid_1['posz'],
+        mode='markers',
+        marker=dict(size=2, color='lightgray', opacity=0.3),
+        name=f'PID 1 (1)'
+    ))
+
+    # Nodes dins del rang en negre
+    fig_range.add_trace(go.Scatter3d(
+        x=df_range['posx'], y=df_range['posy'], z=df_range
 ::contentReference[oaicite:0]{index=0}
- 
