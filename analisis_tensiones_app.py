@@ -197,8 +197,6 @@ else:
 # --- Zones de contacte entre PID 1 i PID 2 ---
 st.subheader("Zones de contacte entre PID 1 i PID 2")
 
-# Umbral de distància per considerar contacte
-dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
 
 # Construïm arbres KD per a cerca ràpida
 df_pid_1 = df[df['Pid'] == 1]
