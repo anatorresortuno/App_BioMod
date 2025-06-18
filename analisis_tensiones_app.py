@@ -8,12 +8,12 @@ from scipy.spatial import cKDTree
 
 st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 
-st.title("🔍 Visualització i Anàlisi de Tensions Von Mises")
+st.title("Visualització i Anàlisi de Tensions Von Mises")
 st.write("Carrega un fitxer Excel amb resultats de Von Mises per començar.")
 
 uploaded_file = st.file_uploader("Selecciona un arxiu Excel", type=["csv"])
 if uploaded_file is None:
-    st.warning("⚠️ Si us plau, carrega un arxiu Excel per continuar.")
+    st.warning("Si us plau, carrega un arxiu Excel per continuar.")
     st.stop()
 
 try:
@@ -28,7 +28,7 @@ if missing:
     st.error(f"Falten les columnes necessàries: {', '.join(missing)}")
     st.stop()
 
-st.success("Arxiu carregat correctament 🎉")
+st.success("Arxiu carregat correctament")
 st.dataframe(df.head())
 
 # Selección de PID al inicio
@@ -42,7 +42,7 @@ else:
     df_sel = df[df['Pid'].isin([1, 2])]
 
 # Estadísticas básicas para el PID seleccionado
-st.subheader(f"📊 Estadístiques bàsiques PID {pid_selection}")
+st.subheader(f"Estadístiques bàsiques PID {pid_selection}")
 data_vm = df_sel['FunctionTop:StressesVon MisesCentroid']
 st.write(f"Màxim: {data_vm.max():.4f} MPa")
 st.write(f"Mínim: {data_vm.min():.4f} MPa")
@@ -74,7 +74,7 @@ porcentaje = st.slider(f"Selecciona percentatge de mostra (PID {pid_selection})"
 df_sample = df_sel.sample(frac=porcentaje, random_state=42)
 
 # Gráfica 3D para el PID seleccionado
-st.subheader(f"🧱 Gràfica 3D - Tensions Von Mises PID {pid_selection}")
+st.subheader(f"Gràfica 3D - Tensions Von Mises PID {pid_selection}")
 fig1 = px.scatter_3d(
     df_sample,
     x='posx', y='posy', z='posz',
@@ -87,7 +87,7 @@ st.plotly_chart(fig1, use_container_width=True)
 
 # Si selecciona 'Ambos', muestra análisis de contacto
 if pid_selection == 'Ambos':
-    st.subheader("🔎 Zones de contacte entre PID 1 i PID 2")
+    st.subheader("Zones de contacte entre PID 1 i PID 2")
 
     dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
 
@@ -140,7 +140,7 @@ if pid_selection == 'Ambos':
         st.write(f"No s'han trobat nodes de PID 1 en contacte amb PID 2 dins la distància de {dist_umbral} mm.")
 
 # Destacar nodos dentro del rango Von Mises según PID seleccionado
-st.subheader("⚫ Destacar nodes dins d'un rang de tensions Von Mises")
+st.subheader("Destacar nodes dins d'un rang de tensions Von Mises")
 
 min_von_mises = st.number_input("Valor mínim de Von Mises (MPa)", min_value=0.0, value=0.5, step=0.01)
 max_von_mises = st.number_input("Valor màxim de Von Mises (MPa)", min_value=0.0, value=1.0, step=0.01)
@@ -195,7 +195,7 @@ else:
 
 
 # --- Zones de contacte entre PID 1 i PID 2 ---
-st.subheader("🔎 Zones de contacte entre PID 1 i PID 2")
+st.subheader("Zones de contacte entre PID 1 i PID 2")
 
 # Umbral de distància per considerar contacte
 dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
@@ -239,7 +239,7 @@ if contact_nodes_1:
                     'Distància (mm)': dist
                 })
     df_pares_cercans = pd.DataFrame(pares_cercans)
-    st.subheader("📋 Taula de nodes pròxims entre PID 1 i PID 2")
+    st.subheader("Taula de nodes pròxims entre PID 1 i PID 2")
     st.dataframe(df_pares_cercans)
 
     # Mostrar 3D amb els contactes destacats
