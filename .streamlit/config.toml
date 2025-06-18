@@ -1,6 +1,6 @@
 [theme]
 primaryColor = "#1f77b4"
-backgroundColor = "#0d1b2a"        # Azul muy oscuro pero no negro
-secondaryBackgroundColor = "#415a77" # Azul grisáceo claro para paneles
-textColor = "#e0e0e0"
+backgroundColor = "#ffffff"           # Fondo blanco puro
+secondaryBackgroundColor = "#f0f4f8" # Paneles azul muy claro
+textColor = "#0c1a2b"                 # Texto azul oscuro
 font = "sans serif"
