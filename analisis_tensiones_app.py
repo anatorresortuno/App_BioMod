@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import scipy.stats as stats
 from scipy.spatial import cKDTree
 
-st.set_page_config(page_title="Análisis Von Mises", layout="wide")
+st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 
 st.title("🔍 Visualització i Anàlisi de Tensions Von Mises")
 st.write("Carrega un fitxer Excel amb resultats de Von Mises per començar.")
@@ -37,11 +37,11 @@ if missing:
 st.success("Arxiu carregat correctament 🎉")
 st.dataframe(df.head())
 
-# --- Selección de PID 1 y PID 2 ---
+# --- Selecció de PID 1 i PID 2 ---
 df_pid_1 = df[df['Pid'] == 1]
 df_pid_2 = df[df['Pid'] == 2]
 
-# Estadísticas básicas para PID 1
+# Estadístiques bàsiques per PID 1
 st.subheader("📊 Estadístiques bàsiques PID 1")
 data_1 = df_pid_1['FunctionTop:StressesVon MisesCentroid']
 st.write(f"**PID 1 seleccionat: 1**")
@@ -55,11 +55,11 @@ st.write(data_1.quantile([0.25, 0.5, 0.75, 0.95]))
 st.write(f"Asimetria (skewness): {stats.skew(data_1):.4f}")
 st.write(f"Kurtosis: {stats.kurtosis(data_1):.4f}")
 
-# Selector de escala de color para la gráfica
+# Selector de escala de color per a la gràfica
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
-color_scale_sel = st.selectbox("Selecciona escala de color per la tensió Von Mises:", color_scales, index=0)
+color_scale_sel = st.selectbox("Selecciona escala de color per a la tensió Von Mises:", color_scales, index=0)
 
-# Selecciona rango para el color scale
+# Selecciona rang per a l'escala de color
 min_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].min())
 max_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].max())
 
@@ -71,11 +71,11 @@ color_range_min, color_range_max = st.slider(
     step=0.01
 )
 
-# Selector de percentatge de mostra (usar para PID 1 per mostrar en 3D)
+# Selector de percentatge de mostra (usar per a PID 1 per mostrar en 3D)
 porcentaje = st.slider("Selecciona percentatge de mostra (PID 1)", 0.01, 1.0, 1.0)
 df_sample_1 = df_pid_1.sample(frac=porcentaje, random_state=42)
 
-# Gràfica 3D per PID 1
+# Gràfica 3D per a PID 1
 st.subheader("🧱 Gràfica 3D - Tensions Von Mises PID 1")
 fig1 = px.scatter_3d(
     df_sample_1,
@@ -177,6 +177,18 @@ if not df_range.empty:
 
     # Nodes dins del rang en negre
     fig_range.add_trace(go.Scatter3d(
-        x=df_range['posx'], y=df_range['posy'], z=df_range
-::contentReference[oaicite:0]{index=0}
+        x=df_range['posx'], y=df_range['posy'], z=df_range['posz'],
+        mode='markers',
+        marker=dict(size=5, color='black', symbol='circle'),
+        name='Nodes dins del rang'
     ))
+
+    fig_range.update_layout(
+        title=f'Nodes de PID 1 amb tensions Von Mises entre {min_von_mises} i {max_von_mises} MPa',
+        scene=dict(
+            xaxis_title='X [mm]',
+            yaxis_title='Y [mm]',
+            zaxis_title='Z [mm]'
+        ),
+        legend=dict(x=0,
+::contentReference[oaicite:0]{index=0}
