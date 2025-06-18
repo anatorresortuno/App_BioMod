@@ -1,6 +1,6 @@
 [theme]
-primaryColor = "#4a90e2"              # Blau suau i modern
-backgroundColor = "#ffff00"           # Fons clar i net
-secondaryBackgroundColor = "#e0e6f1"  # Fons suau per a components secundaris
-textColor = "#333333"                 # Text fosc però suau
-font = "sans serif"                   # Font clara i neta
+primaryColor = "#004080"       # Blau fosc professional
+backgroundColor = "#f5f7fa"    # Gris clar suau
+secondaryBackgroundColor = "#e1e5ea"
+textColor = "#333333"          # Gris molt fosc per textos
+font = "sans serif"
