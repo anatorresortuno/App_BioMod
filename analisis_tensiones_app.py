@@ -192,3 +192,65 @@ if not df_range.empty:
     st.plotly_chart(fig_range, use_container_width=True)
 else:
     st.write(f"No s'han trobat nodes de PID {pid_selection} amb tensions dins el rang indicat.")
+
+# --- Zonas de contacto entre PID 1 y PID 2 ---
+st.subheader("🔎 Zonas de contacte entre PID 1 i PID 2")
+
+# Umbral de distancia para considerar contacto (en las mismas unidades que posx,y,z, ej mm)
+dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
+
+# Construimos árboles KD para una búsqueda rápida
+coords_1 = df_pid_1[['posx', 'posy', 'posz']].values
+coords_2 = df_pid_2[['posx', 'posy', 'posz']].values
+
+tree_2 = cKDTree(coords_2)
+# Encontrar índices de puntos en pid_1 que tienen vecinos en pid_2 dentro del umbral
+contact_idx_1 = tree_2.query_ball_point(coords_1, r=dist_umbral)
+
+# Filtrar nodos que tienen vecinos en PID 2
+contact_nodes_1 = [i for i, neighbors in enumerate(contact_idx_1) if neighbors]
+
+if contact_nodes_1:
+    df_contact_1 = df_pid_1.iloc[contact_nodes_1]
+    st.write(f"S'han trobat **{len(df_contact_1)}** nodes de PID 1 amb contacte dins {dist_umbral} mm amb PID 2.")
+    st.dataframe(df_contact_1)
+
+    # Mostrar 3D con los contactos destacados
+    fig_contact = go.Figure()
+
+    # Todos PID 1 en gris claro
+    fig_contact.add_trace(go.Scatter3d(
+        x=df_pid_1['posx'], y=df_pid_1['posy'], z=df_pid_1['posz'],
+        mode='markers',
+        marker=dict(size=2, color='lightgray', opacity=0.3),
+        name=f'PID 1 (1)'
+    ))
+
+    # Todos PID 2 en azul claro
+    fig_contact.add_trace(go.Scatter3d(
+        x=df_pid_2['posx'], y=df_pid_2['posy'], z=df_pid_2['posz'],
+        mode='markers',
+        marker=dict(size=2, color='lightblue', opacity=0.3),
+        name=f'PID 2 (2)'
+    ))
+
+    # Nodos de contacto PID 1 en rojo
+    fig_contact.add_trace(go.Scatter3d(
+        x=df_contact_1['posx'], y=df_contact_1['posy'], z=df_contact_1['posz'],
+        mode='markers',
+        marker=dict(size=5, color='red', symbol='circle'),
+        name='Nodes de contacte PID 1'
+    ))
+
+    fig_contact.update_layout(
+        title=f'Zones de contacte entre PID 1 i PID 2 (distància ≤ {dist_umbral} mm)',
+        scene=dict(
+            xaxis_title='X [mm]',
+            yaxis_title='Y [mm]',
+            zaxis_title='Z [mm]'
+        ),
+        legend=dict(x=0, y=1)
+    )
+    st.plotly_chart(fig_contact, use_container_width=True)
+else:
+    st.write(f"No s'han trobat nodes de PID 1 en contacte amb PID 2 dins la distància de {dist_umbral} mm.")
