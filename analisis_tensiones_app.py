@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as stats
-from scipy.spatial import cKDTree  # Para búsqueda eficiente de proximidades
+from scipy.spatial import cKDTree  # Para buscar proximidades eficientes
 
 st.set_page_config(page_title="Análisis Von Mises", layout="wide")
 
@@ -41,20 +41,12 @@ st.dataframe(df.head())
 if 'Pid' in df.columns:
     pids = df['Pid'].unique().tolist()
     pids.sort()
-    pids.insert(0, "Tots (Ambos)")
 
-    pid_1 = st.selectbox("Selecciona primer PID:", pids, index=0)
-    pid_2 = st.selectbox("Selecciona segon PID:", pids, index=0)
+    pid_1 = st.selectbox("Selecciona primer PID:", pids)
+    pid_2 = st.selectbox("Selecciona segon PID:", pids)
     
-    if pid_1 == "Tots (Ambos)":
-        df_pid_1 = df.copy()
-    else:
-        df_pid_1 = df[df['Pid'] == pid_1]
-
-    if pid_2 == "Tots (Ambos)":
-        df_pid_2 = df.copy()
-    else:
-        df_pid_2 = df[df['Pid'] == pid_2]
+    df_pid_1 = df[df['Pid'] == pid_1]
+    df_pid_2 = df[df['Pid'] == pid_2]
 else:
     st.warning("No s'ha trobat la columna 'Pid'. S'analitzaran tots els nodes junts.")
     df_pid_1 = df.copy()
@@ -79,24 +71,24 @@ st.write(f"Kurtosis: {stats.kurtosis(data_1):.4f}")
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
 color_scale_sel = st.selectbox("Selecciona escala de color per la tensió Von Mises:", color_scales, index=0)
 
-# Seleccionar rango para el color scale
+# Selecciona rango para el color scale
 min_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].min())
 max_val = float(df_pid_1['FunctionTop:StressesVon MisesCentroid'].max())
 
-st.write("### Ajusta el rango de valores para la escala de color (Von Mises)")
+st.write("### Ajusta el rang de valors per a l'escala de color (Von Mises)")
 
 color_range_min, color_range_max = st.slider(
-    "Selecciona rango de color para la escala de Von Mises",
+    "Selecciona rang de color per a l'escala de Von Mises",
     min_val, max_val,
     (min_val, max_val),
     step=0.01
 )
 
-# Selector de percentatge de mostra (usar para PID 1 para mostrar en 3D)
+# Selector de percentatge de mostra (usar para PID 1 per mostrar en 3D)
 porcentaje = st.slider("Selecciona percentatge de mostra (PID 1)", 0.01, 1.0, 1.0)
 df_sample_1 = df_pid_1.sample(frac=porcentaje, random_state=42)
 
-# Gráfica 3D para PID 1
+# Gràfica 3D per a PID 1
 st.subheader("🧱 Gràfica 3D - Tensions Von Mises PID 1")
 fig1 = px.scatter_3d(
     df_sample_1,
@@ -108,22 +100,22 @@ fig1 = px.scatter_3d(
 )
 st.plotly_chart(fig1, use_container_width=True)
 
-# --- Zonas de contacto entre PID 1 y PID 2 ---
+# --- Zones de contacte entre PID 1 i PID 2 ---
 
 st.subheader("🔎 Zones de contacte entre PID 1 i PID 2")
 
-# Umbral de distancia para considerar contacto (en las mismas unidades que posx,y,z, ej mm)
-dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
+# Umbral de distancia per a considerar contacte (en les mateixes unitats que posx,y,z, ej mm)
+dist_umbral = st.slider("Distància màxima per a considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
 
-# Construimos árboles KD para búsqueda rápida
+# Construïm arbres KD per a cerca ràpida
 coords_1 = df_pid_1[['posx', 'posy', 'posz']].values
 coords_2 = df_pid_2[['posx', 'posy', 'posz']].values
 
 tree_2 = cKDTree(coords_2)
-# Encontrar índices de puntos en pid_1 que tienen vecinos en pid_2 dentro del umbral
+# Trobar índexs de punts en pid_1 que tenen veïns en pid_2 dins del llindar
 contact_idx_1 = tree_2.query_ball_point(coords_1, r=dist_umbral)
 
-# Filtrar nodos que tienen vecinos en PID 2
+# Filtrar nodes que tenen veïns en PID 2
 contact_nodes_1 = [i for i, neighbors in enumerate(contact_idx_1) if neighbors]
 
 if contact_nodes_1:
@@ -131,10 +123,10 @@ if contact_nodes_1:
     st.write(f"S'han trobat **{len(df_contact_1)}** nodes de PID 1 amb contacte dins {dist_umbral} mm amb PID 2.")
     st.dataframe(df_contact_1)
 
-    # Mostrar 3D con los contactos destacados
+    # Mostrar 3D amb els contactes destacats
     fig_contact = go.Figure()
 
-    # Todos PID 1 en gris claro
+    # Tots PID 1 en gris clar
     fig_contact.add_trace(go.Scatter3d(
         x=df_pid_1['posx'], y=df_pid_1['posy'], z=df_pid_1['posz'],
         mode='markers',
@@ -142,7 +134,7 @@ if contact_nodes_1:
         name=f'PID 1 ({pid_1})'
     ))
 
-    # Todos PID 2 en azul claro
+    # Tots PID 2 en blau clar
     fig_contact.add_trace(go.Scatter3d(
         x=df_pid_2['posx'], y=df_pid_2['posy'], z=df_pid_2['posz'],
         mode='markers',
@@ -150,11 +142,11 @@ if contact_nodes_1:
         name=f'PID 2 ({pid_2})'
     ))
 
-    # Nodos de contacto PID 1 en rojo
+    # Nodos de contacte PID 1 en vermell
     fig_contact.add_trace(go.Scatter3d(
         x=df_contact_1['posx'], y=df_contact_1['posy'], z=df_contact_1['posz'],
         mode='markers',
-        marker=dict(size=6, color='red', symbol='circle'),
+        marker=dict(size=5, color='red', symbol='circle'),
         name='Nodes de contacte PID 1'
     ))
 
@@ -172,4 +164,5 @@ else:
     st.write(f"No s'han trobat nodes de PID 1 en contacte amb PID 2 dins la distància de {dist_umbral} mm.")
 
 # --- Fi zones de contacte ---
+
 
