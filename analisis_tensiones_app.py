@@ -4,7 +4,6 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as stats
-from scipy.spatial import cKDTree  # Añadido para zonas de contacto
 
 st.set_page_config(page_title="Análisis Von Mises", layout="wide")
 
@@ -53,66 +52,7 @@ else:
     st.warning("No s'ha trobat la columna 'Pid'. S'analitzaran tots els nodes junts.")
     df_filtrat = df.copy()
     pid_seleccionat = "Tots (Ambos)"
-# === Fin Selector Pid ===
-
-# === Nueva sección: Análisis zona de contacto entre dos PIDs ===
-if 'Pid' in df.columns and len(pids) > 2:
-    st.subheader("🔗 Anàlisi de zones de contacte entre PIDs")
-
-    pid1 = st.selectbox("Selecciona PID 1 per contacte:", pids[1:], index=0)
-    pid2 = st.selectbox("Selecciona PID 2 per contacte:", pids[1:], index=1 if len(pids) > 2 else 0)
-
-    if pid1 == pid2:
-        st.warning("Selecciona dos PIDs diferents per analitzar la zona de contacte.")
-    else:
-        umbral_distancia = st.slider("Distància màxima per considerar contacte (mm)", 0.001, 1.0, 0.01, 0.001)
-
-        df_pid1 = df[df['Pid'] == pid1]
-        df_pid2 = df[df['Pid'] == pid2]
-
-        coords_pid1 = df_pid1[['posx', 'posy', 'posz']].values
-        coords_pid2 = df_pid2[['posx', 'posy', 'posz']].values
-
-        tree_pid2 = cKDTree(coords_pid2)
-        vecinos = tree_pid2.query_ball_point(coords_pid1, r=umbral_distancia)
-        contacto_mask_pid1 = np.array([len(v) > 0 for v in vecinos])
-        contacto_pid1 = df_pid1[contacto_mask_pid1]
-
-        st.write(f"Nodos de PID `{pid1}` en contacte amb PID `{pid2}` (distància < {umbral_distancia} mm): **{len(contacto_pid1)}**")
-
-        scatter_pid1 = go.Scatter3d(
-            x=df_pid1['posx'], y=df_pid1['posy'], z=df_pid1['posz'],
-            mode='markers',
-            marker=dict(size=3, color='blue', opacity=0.5),
-            name=f'PID {pid1}'
-        )
-
-        scatter_pid2 = go.Scatter3d(
-            x=df_pid2['posx'], y=df_pid2['posy'], z=df_pid2['posz'],
-            mode='markers',
-            marker=dict(size=3, color='red', opacity=0.5),
-            name=f'PID {pid2}'
-        )
-
-        scatter_contacto = go.Scatter3d(
-            x=contacto_pid1['posx'], y=contacto_pid1['posy'], z=contacto_pid1['posz'],
-            mode='markers',
-            marker=dict(size=6, color='yellow'),
-            name='Nodos en contacto'
-        )
-
-        fig_contacte = go.Figure(data=[scatter_pid1, scatter_pid2, scatter_contacto])
-        fig_contacte.update_layout(
-            title=f"Contacte entre PID {pid1} i PID {pid2}",
-            scene=dict(
-                xaxis_title='X [mm]',
-                yaxis_title='Y [mm]',
-                zaxis_title='Z [mm]'
-            )
-        )
-        st.plotly_chart(fig_contacte, use_container_width=True)
-# === Fin nueva sección ===
-
+# === Fi selector PID ===
 
 # 🔢 Estadístiques bàsiques
 st.subheader("📊 Estadístiques bàsiques")
@@ -139,11 +79,9 @@ fig = px.scatter_3d(
     x='posx', y='posy', z='posz',
     color='FunctionTop:StressesVon MisesCentroid',
     color_continuous_scale='Jet',
-    range_color=[0, 1],
     title='Distribució de Tensions Von Mises'
 )
 st.plotly_chart(fig, use_container_width=True)
-
 
 # Filtrar nodes
 st.subheader("⚫ Filtrar nodes per rang de tensió")
@@ -154,7 +92,7 @@ min_tension = float(df_filtrat['FunctionTop:StressesVon MisesCentroid'].min())
 # Slider rango inferior
 lower = st.slider("Tensió mínima (majors que)", min_value=min_tension, max_value=max_tension, value=min_tension, step=0.01)
 
-# Slider rango superior, debe ser mayor o igual que lower
+# Slider rango superior
 upper = st.slider("Tensió màxima (menors que)", min_value=lower, max_value=max_tension, value=max_tension, step=0.01)
 
 # Filtrar nodos dentro del rango
@@ -179,7 +117,7 @@ scatter_filtrados = go.Scatter3d(
     name=f'Nodes amb tensió entre {lower:.3f} i {upper:.3f}'
 )
 
-fig = go.Figure(data=[=[scatter_all, scatter_filtrados])
+fig = go.Figure(data=[scatter_all, scatter_filtrados])
 
 fig.update_layout(
     title=f"Nodes amb tensió entre {lower:.3f} i {upper:.3f} (Total: {num_filtrados})",
