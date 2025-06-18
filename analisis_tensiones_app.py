@@ -184,12 +184,24 @@ if not df_range.empty:
     ))
 
     fig_range.update_layout(
-        title=f'Nodes de PID 1 amb tensions Von Mises entre {min_von_mises} i {max_von_mises} MPa',
-        scene=dict(
-            xaxis_title='X [mm]',
-            yaxis_title='Y [mm]',
-            zaxis_title='Z [mm]'
+    title=f'Nodes de PID 1 amb tensions Von Mises entre {min_von_mises} i {max_von_mises} MPa',
+    scene=dict(
+        xaxis_title='X [mm]',
+        yaxis_title='Y [mm]',
+        zaxis_title='Z [mm]'
+    ),
+    legend=dict(
+        x=0,
+        y=1,
+        traceorder="normal",
+        title_font_family="Arial",
+        font=dict(
+            family="Courier New, monospace",
+            size=12,
+            color="black"
         ),
-        legend=dict(x=0, y
-::contentReference[oaicite:0]{index=0}
- 
+        bgcolor="LightSteelBlue",
+        bordercolor="Black",
+        borderwidth=2
+    )
+)
