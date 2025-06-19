@@ -111,6 +111,19 @@ df_stats.to_excel(summary_filename, index=False)
 
 st.success(f"Estadístiques guardades a {summary_filename}")
 
+# Després de crear el dataframe df_estadisticas i voler-lo guardar i oferir a l'usuari:
+excel_buffer = io.BytesIO()
+with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+    df_estadisticas.to_excel(writer, index=False, sheet_name='Estadísticas')
+    writer.save()
+excel_buffer.seek(0)
+
+st.download_button(
+    label="Descarrega l'arxiu d'estadístiques Excel",
+    data=excel_buffer,
+    file_name="estadisticas_acumulades.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 
 # Selector de escala de color
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
