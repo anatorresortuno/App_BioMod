@@ -8,6 +8,7 @@ import scipy.stats as stats
 from scipy.spatial import cKDTree
 import io
 from datetime import datetime
+from io import BytesIO 
     
 st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 
