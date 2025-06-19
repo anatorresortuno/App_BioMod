@@ -5,7 +5,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as stats
 from scipy.spatial import cKDTree
-import os
 
 st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 
@@ -32,9 +31,6 @@ if missing:
 st.success("Arxiu carregat correctament")
 st.dataframe(df.head())
 
-# Pide un identificador para el caso / escenario
-case_id = st.text_input("Identificador del cas/escenari (ex: case1 escenario0)", value="case1 escenario0")
-
 # Selección de PID al inicio
 pid_selection = st.radio("Selecciona PID a visualitzar:", options=['1', '2', 'Ambos'], index=2)
 
@@ -45,85 +41,19 @@ elif pid_selection == '2':
 else:
     df_sel = df[df['Pid'].isin([1, 2])]
 
-def calculate_stats(data, pid_label):
-    return {
-        "Case": case_id,
-        "Archivo": uploaded_file.name,
-        "PID": pid_label,
-        "Min": data.min(),
-        "Max": data.max(),
-        "Mean": data.mean(),
-        "Median": data.median(),
-        "Std": data.std(),
-        "Skewness": stats.skew(data),
-        "Kurtosis": stats.kurtosis(data),
-        "Q25": data.quantile(0.25),
-        "Q50": data.quantile(0.5),
-        "Q75": data.quantile(0.75),
-        "Q95": data.quantile(0.95)
-    }
+# Estadísticas básicas para el PID seleccionado
+st.subheader(f"Estadístiques bàsiques PID {pid_selection}")
+data_vm = df_sel['FunctionTop:StressesVon MisesCentroid']
+st.write(f"Màxim: {data_vm.max():.4f} MPa")
+st.write(f"Mínim: {data_vm.min():.4f} MPa")
+st.write(f"Mitja: {data_vm.mean():.4f} MPa")
+st.write(f"Mitjana: {data_vm.median():.4f} MPa")
+st.write(f"Desviació estàndard: {data_vm.std():.4f}")
+st.write("Quartils:")
+st.write(data_vm.quantile([0.25, 0.5, 0.75, 0.95]))
+st.write(f"Asimetria (skewness): {stats.skew(data_vm):.4f}")
+st.write(f"Kurtosis: {stats.kurtosis(data_vm):.4f}")
 
-# Calcular estadísticas para PID 1, PID 2 y Ambos
-stats_list = []
-
-df_pid1 = df[df['Pid'] == 1]['FunctionTop:StressesVon MisesCentroid']
-if not df_pid1.empty:
-    stats_list.append(calculate_stats(df_pid1, "Pid1"))
-
-df_pid2 = df[df['Pid'] == 2]['FunctionTop:StressesVon MisesCentroid']
-if not df_pid2.empty:
-    stats_list.append(calculate_stats(df_pid2, "Pid2"))
-
-df_pid_both = df[df['Pid'].isin([1, 2])]['FunctionTop:StressesVon MisesCentroid']
-if not df_pid_both.empty:
-    stats_list.append(calculate_stats(df_pid_both, "Pid1&2"))
-
-# Mostrar estadísticas en Streamlit
-st.subheader("Estadístiques principals per PID")
-for s in stats_list:
-    st.write(f"**{s['Case']} - {s['Archivo']} - {s['PID']}**")
-    st.write(f"Mínim: {s['Min']:.4f} MPa")
-    st.write(f"Màxim: {s['Max']:.4f} MPa")
-    st.write(f"Mitja: {s['Mean']:.4f} MPa")
-    st.write(f"Mediana: {s['Median']:.4f} MPa")
-    st.write(f"Desviació estàndard: {s['Std']:.4f}")
-    st.write(f"Asimetria: {s['Skewness']:.4f}")
-    st.write(f"Kurtosis: {s['Kurtosis']:.4f}")
-    st.write(f"Quartils 25%, 50%, 75%, 95%: {s['Q25']:.4f}, {s['Q50']:.4f}, {s['Q75']:.4f}, {s['Q95']:.4f}")
-    st.write("---")
-
-# Guardar estadísticas en Excel resumen
-
-summary_filename = "estadisticas_von_mises.xlsx"
-
-# Convertir lista a DataFrame
-df_stats_new = pd.DataFrame(stats_list)
-
-if os.path.exists(summary_filename):
-    df_stats_old = pd.read_excel(summary_filename)
-    # Añadir nuevas filas
-    df_stats = pd.concat([df_stats_old, df_stats_new], ignore_index=True)
-else:
-    df_stats = df_stats_new
-
-# Guardar
-df_stats.to_excel(summary_filename, index=False)
-
-st.success(f"Estadístiques guardades a {summary_filename}")
-
-# Després de crear el dataframe df_estadisticas i voler-lo guardar i oferir a l'usuari:
-excel_buffer = io.BytesIO()
-with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-    df_estadisticas.to_excel(writer, index=False, sheet_name='Estadísticas')
-    writer.save()
-excel_buffer.seek(0)
-
-st.download_button(
-    label="Descarrega l'arxiu d'estadístiques Excel",
-    data=excel_buffer,
-    file_name="estadisticas_acumulades.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
 
 # Selector de escala de color
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
