@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as stats
 from scipy.spatial import cKDTree
+import os
 
 st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 
@@ -31,7 +32,74 @@ if missing:
 st.success("Arxiu carregat correctament")
 st.dataframe(df.head())
 
-# Selección de PID al inicio
+# --- Función para calcular estadísticas ---
+def calcular_estadisticas(df_sub, pid_label):
+    data = df_sub['FunctionTop:StressesVon MisesCentroid']
+    return {
+        'PID': pid_label,
+        'N_nodes': len(df_sub),
+        'Max': data.max(),
+        'Min': data.min(),
+        'Mean': data.mean(),
+        'Median': data.median(),
+        'Std': data.std(),
+        'Q25': data.quantile(0.25),
+        'Q50': data.quantile(0.5),
+        'Q75': data.quantile(0.75),
+        'Q95': data.quantile(0.95),
+        'Skewness': stats.skew(data),
+        'Kurtosis': stats.kurtosis(data)
+    }
+
+# Calculamos para pid=1, pid=2 y ambos (1+2)
+stats_1 = calcular_estadisticas(df[df['Pid'] == 1], '1')
+stats_2 = calcular_estadisticas(df[df['Pid'] == 2], '2')
+stats_both = calcular_estadisticas(df[df['Pid'].isin([1,2])], '1+2')
+
+df_stats_new = pd.DataFrame([stats_1, stats_2, stats_both])
+
+# Ruta archivo acumulado
+folder_path = ".streamlit"
+os.makedirs(folder_path, exist_ok=True)
+acc_file_path = os.path.join(folder_path, "estadisticas_acumuladas.xlsx")
+
+# Si existe archivo acumulado, cargarlo y añadir las filas nuevas
+if os.path.exists(acc_file_path):
+    df_acc = pd.read_excel(acc_file_path)
+    df_acc = pd.concat([df_acc, df_stats_new], ignore_index=True)
+else:
+    df_acc = df_stats_new.copy()
+
+# Guardar actualizado
+df_acc.to_excel(acc_file_path, index=False)
+
+st.subheader("Estadístiques bàsiques calculades (nou fitxer)")
+st.dataframe(df_stats_new)
+
+st.subheader("Estadístiques acumulades (tots fitxers)")
+st.dataframe(df_acc)
+
+# Botón para descargar archivo acumulado
+import base64
+
+def get_table_download_link(df, filename, text):
+    towrite = df.to_excel(index=False)
+    b64 = base64.b64encode(towrite if isinstance(towrite, bytes) else towrite.encode()).decode()
+    href = f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{text}</a>'
+    return href
+
+# Más fácil: usar st.download_button con archivo en disco
+with open(acc_file_path, "rb") as f:
+    bytes_data = f.read()
+
+st.download_button(
+    label="Descarregar Excel acumulat d'estadístiques",
+    data=bytes_data,
+    file_name="estadistiques_acumulades.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+# --- Resto de tu código para visualización y análisis ---
 pid_selection = st.radio("Selecciona PID a visualitzar:", options=['1', '2', 'Ambos'], index=2)
 
 if pid_selection == '1':
@@ -41,7 +109,6 @@ elif pid_selection == '2':
 else:
     df_sel = df[df['Pid'].isin([1, 2])]
 
-# Estadísticas básicas para el PID seleccionado
 st.subheader(f"Estadístiques bàsiques PID {pid_selection}")
 data_vm = df_sel['FunctionTop:StressesVon MisesCentroid']
 st.write(f"Màxim: {data_vm.max():.4f} MPa")
@@ -53,7 +120,6 @@ st.write("Quartils:")
 st.write(data_vm.quantile([0.25, 0.5, 0.75, 0.95]))
 st.write(f"Asimetria (skewness): {stats.skew(data_vm):.4f}")
 st.write(f"Kurtosis: {stats.kurtosis(data_vm):.4f}")
-
 
 # Selector de escala de color
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
@@ -193,145 +259,3 @@ if not df_range.empty:
     st.plotly_chart(fig_range, use_container_width=True)
 else:
     st.write(f"No s'han trobat nodes de PID {pid_selection} amb tensions dins el rang indicat.")
-
-
-# --- Zones de contacte entre PID 1 i PID 2 (primer cop, dins "Ambos") ---
-if pid_selection == 'Ambos':
-    st.subheader("Zones de contacte entre PID 1 i PID 2")
-
-    dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
-
-    df_pid_1 = df[df['Pid'] == 1]
-    df_pid_2 = df[df['Pid'] == 2]
-
-    coords_1 = df_pid_1[['posx', 'posy', 'posz']].values
-    coords_2 = df_pid_2[['posx', 'posy', 'posz']].values
-
-    tree_2 = cKDTree(coords_2)
-    contact_idx_1 = tree_2.query_ball_point(coords_1, r=dist_umbral)
-    contact_nodes_1 = [i for i, neighbors in enumerate(contact_idx_1) if neighbors]
-
-    if contact_nodes_1:
-        df_contact_1 = df_pid_1.iloc[contact_nodes_1]
-        st.write(f"S'han trobat **{len(df_contact_1)}** nodes de PID 1 amb contacte dins {dist_umbral} mm amb PID 2.")
-        st.dataframe(df_contact_1)
-
-        fig_contact = go.Figure()
-        fig_contact.add_trace(go.Scatter3d(
-            x=df_pid_1['posx'], y=df_pid_1['posy'], z=df_pid_1['posz'],
-            mode='markers',
-            marker=dict(size=2, color='lightgray', opacity=0.3),
-            name='PID 1'
-        ))
-        fig_contact.add_trace(go.Scatter3d(
-            x=df_pid_2['posx'], y=df_pid_2['posy'], z=df_pid_2['posz'],
-            mode='markers',
-            marker=dict(size=2, color='lightblue', opacity=0.3),
-            name='PID 2'
-        ))
-        fig_contact.add_trace(go.Scatter3d(
-            x=df_contact_1['posx'], y=df_contact_1['posy'], z=df_contact_1['posz'],
-            mode='markers',
-            marker=dict(size=5, color='red', symbol='circle'),
-            name='Nodes de contacte PID 1'
-        ))
-
-        fig_contact.update_layout(
-            title=f'Zones de contacte entre PID 1 i PID 2 (distància ≤ {dist_umbral} mm)',
-            scene=dict(
-                xaxis_title='X [mm]',
-                yaxis_title='Y [mm]',
-                zaxis_title='Z [mm]'
-            ),
-            legend=dict(x=0, y=1)
-        )
-        st.plotly_chart(fig_contact, use_container_width=True)
-    else:
-        st.write(f"No s'han trobat nodes de PID 1 en contacte amb PID 2 dins la distància de {dist_umbral} mm.")
-
-# --- Zones de contacte entre PID 1 i PID 2 (segon cop) ---
-st.subheader("Zones de contacte entre PID 1 i PID 2")
-
-# 🛠 Define dist_umbral again globally to avoid NameError
-dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1, key="dist_umbral_global")
-
-df_pid_1 = df[df['Pid'] == 1]
-df_pid_2 = df[df['Pid'] == 2]
-coords_1 = df_pid_1[['posx', 'posy', 'posz']].values
-coords_2 = df_pid_2[['posx', 'posy', 'posz']].values
-
-tree_2 = cKDTree(coords_2)
-contact_idx_1 = tree_2.query_ball_point(coords_1, r=dist_umbral)
-contact_nodes_1 = [i for i, neighbors in enumerate(contact_idx_1) if neighbors]
-
-if contact_nodes_1:
-    df_contact_1 = df_pid_1.iloc[contact_nodes_1]
-    st.write(f"S'han trobat **{len(df_contact_1)}** nodes de PID 1 amb contacte dins {dist_umbral} mm amb PID 2.")
-    st.dataframe(df_contact_1)
-
-    # Afegim aquí la taula amb parelles de nodes pròxims
-    pares_cercans = []
-    for idx_1, veïns_2 in enumerate(contact_idx_1):
-        for idx_2 in veïns_2:
-            node_1 = df_pid_1.iloc[idx_1]
-            node_2 = df_pid_2.iloc[idx_2]
-            dist = np.linalg.norm(
-                np.array([node_1['posx'], node_1['posy'], node_1['posz']]) -
-                np.array([node_2['posx'], node_2['posy'], node_2['posz']])
-            )
-            if dist <= dist_umbral:
-                pares_cercans.append({
-                    'Node PID 1 ID': node_1.name,
-                    'PID 1 posx': node_1['posx'],
-                    'PID 1 posy': node_1['posy'],
-                    'PID 1 posz': node_1['posz'],
-                    'Node PID 2 ID': node_2.name,
-                    'PID 2 posx': node_2['posx'],
-                    'PID 2 posy': node_2['posy'],
-                    'PID 2 posz': node_2['posz'],
-                    'Distància (mm)': dist
-                })
-    df_pares_cercans = pd.DataFrame(pares_cercans)
-    st.subheader("Taula de nodes pròxims entre PID 1 i PID 2")
-    st.dataframe(df_pares_cercans)
-
-    # Mostrar 3D amb els contactes destacats
-    fig_contact = go.Figure()
-
-    # Tots PID 1 en gris clar
-    fig_contact.add_trace(go.Scatter3d(
-        x=df_pid_1['posx'], y=df_pid_1['posy'], z=df_pid_1['posz'],
-        mode='markers',
-        marker=dict(size=2, color='lightgray', opacity=0.3),
-        name=f'PID 1 (1)'
-    ))
-
-    # Tots PID 2 en blau clar
-    fig_contact.add_trace(go.Scatter3d(
-        x=df_pid_2['posx'], y=df_pid_2['posy'], z=df_pid_2['posz'],
-        mode='markers',
-        marker=dict(size=2, color='lightblue', opacity=0.3),
-        name=f'PID 2 (2)'
-    ))
-
-    # Nodes de contacte PID 1 en vermell
-    fig_contact.add_trace(go.Scatter3d(
-        x=df_contact_1['posx'], y=df_contact_1['posy'], z=df_contact_1['posz'],
-        mode='markers',
-        marker=dict(size=5, color='red', symbol='circle'),
-        name='Nodes de contacte PID 1'
-    ))
-
-    fig_contact.update_layout(
-        title=f'Zones de contacte entre PID 1 i PID 2 (distància ≤ {dist_umbral} mm)',
-        scene=dict(
-            xaxis_title='X [mm]',
-            yaxis_title='Y [mm]',
-            zaxis_title='Z [mm]'
-        ),
-        legend=dict(x=0, y=1)
-    )
-    st.plotly_chart(fig_contact, use_container_width=True)
-else:
-    st.write(f"No s'han trobat nodes de PID 1 en contacte amb PID 2 dins la distància de {dist_umbral} mm.")
-
