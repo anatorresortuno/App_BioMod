@@ -103,7 +103,7 @@ else:
         st.session_state.df_acumulat = pd.concat([df_acumulat, df_noves_filtradas], ignore_index=True)
         st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
     else:
-        st.warning(f"Totes les estadístiques de '{nom_fitxer}' ja estan acumulades
+        st.warning(f"Totes les estadístiques de '{nom_fitxer}' ja estan acumulades i no s'ha afegit res nou.")
         
 
 # Actualitzar el DataFrame acumulat a la sessió
