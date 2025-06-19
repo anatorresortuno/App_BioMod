@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,12 +5,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as stats
 from scipy.spatial import cKDTree
-import io
 from datetime import datetime
-from io import BytesIO 
-    
-st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
+from io import BytesIO
 
+st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 st.title("Visualització i Anàlisi de Tensions Von Mises")
 st.write("Carrega un fitxer Excel amb resultats de Von Mises per començar.")
 
@@ -58,50 +55,50 @@ def calcular_estadistiques(df_sub, label):
 df_pid_1 = df[df['Pid'] == 1]
 df_pid_2 = df[df['Pid'] == 2]
 
-# Calcular estadístiques pid=1, pid=2 i ambdós
+# Calcular estadístiques
 stats_pid_1 = calcular_estadistiques(df_pid_1, 'PID 1')
 stats_pid_2 = calcular_estadistiques(df_pid_2, 'PID 2')
 stats_ambos = calcular_estadistiques(df[df['Pid'].isin([1, 2])], 'PID 1+2')
 
-# Mostrar estadístiques al Streamlit
-st.subheader("Estadístiques acumulades")
 df_stats_mostrar = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
+st.subheader("Estadístiques acumulades")
 st.dataframe(df_stats_mostrar)
 
-# Inicialitzar DataFrame acumulat a la sessió si no existeix
-if 'df_acumulat' not in st.session_state:
-    st.session_state.df_acumulat = pd.DataFrame()
-
+# Preparar dades per acumular
 nom_fitxer = uploaded_file.name
 data_registre = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
 df_noves['Fitxer'] = nom_fitxer
 df_noves['Data'] = data_registre
 
-df_acumulat = st.session_state.df_acumulat
+# Inicialitzar acumulador
+if 'df_acumulat' not in st.session_state:
+    st.session_state.df_acumulat = pd.DataFrame()
 
-if 'Fitxer' in df_acumulat.columns and nom_fitxer in df_acumulat['Fitxer'].values:
-    st.warning(f"L'arxiu '{nom_fitxer}' ja existeix a l'acumulat. No s'afegeixen dades duplicades.")
-else:
-    st.session_state.df_acumulat = pd.concat([df_acumulat, df_noves], ignore_index=True)
-    st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
+# Eliminar estadístiques existents del mateix fitxer abans d'afegir les noves
+st.session_state.df_acumulat = st.session_state.df_acumulat[
+    st.session_state.df_acumulat['Fitxer'] != nom_fitxer
+]
 
+# Afegir noves estadístiques
+st.session_state.df_acumulat = pd.concat(
+    [st.session_state.df_acumulat, df_noves], ignore_index=True
+)
+st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
 
-# Guardar a un buffer Excel en memòria
+# Guardar Excel
 excel_buffer = BytesIO()
 with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
     st.session_state.df_acumulat.to_excel(writer, index=False)
-    
 excel_buffer.seek(0)
 
-# Botó per descarregar l'arxiu acumulat
 st.download_button(
     label="Descarrega l'Excel acumulat d'estadístiques",
     data=excel_buffer,
     file_name="estadistiques_acumulades.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
+
 
 # === Visualització ===
 pid_selection = st.radio("Selecciona PID a visualitzar:", options=['1', '2', 'Ambos'], index=2)
