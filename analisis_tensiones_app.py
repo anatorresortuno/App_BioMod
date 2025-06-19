@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -5,7 +6,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as stats
 from scipy.spatial import cKDTree
-import os
+import io
+from datetime import datetime
 
 st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 
@@ -65,50 +67,40 @@ st.subheader("Estadístiques acumulades")
 df_stats_mostrar = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
 st.dataframe(df_stats_mostrar)
 
-# Arxiu acumulatiu d'estadístiques
-file_acumulat = "estadistiques_acumulades.xlsx"
+# Inicialitzar DataFrame acumulat a la sessió si no existeix
+if 'df_acumulat' not in st.session_state:
+    st.session_state.df_acumulat = pd.DataFrame()
 
-# Llegir arxiu existent o crear nou DataFrame
-if os.path.exists(file_acumulat):
-    try:
-        df_acumulat = pd.read_excel(file_acumulat)
-    except Exception:
-        df_acumulat = pd.DataFrame()
-else:
-    df_acumulat = pd.DataFrame()
-
-# Afegir columna amb nom del fitxer carregat per identificar dades
+# Afegir columna amb nom del fitxer carregat i data
 nom_fitxer = uploaded_file.name
-
-# Afegir nova fila per cada element amb la info i nom fitxer i data
-from datetime import datetime
 data_registre = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# Crear dataframe per a les noves files
 df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
 df_noves['Fitxer'] = nom_fitxer
 df_noves['Data'] = data_registre
 
-# Concatenar sense perdre dades anteriors
-df_acumulat = pd.concat([df_acumulat, df_noves], ignore_index=True)
+# Actualitzar el DataFrame acumulat a la sessió
+st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves], ignore_index=True)
 
-# Guardar arxiu acumulat
-df_acumulat.to_excel(file_acumulat, index=False)
+st.success("Les estadístiques s'han afegit a l'acumulat de la sessió.")
 
-st.success(f"Les estadístiques s'han guardat i acumulat correctament a {file_acumulat}")
+# Crear arxiu Excel en memòria
+excel_buffer = io.BytesIO()
+with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+    st.session_state.df_acumulat.to_excel(writer, index=False, sheet_name='Estadistiques')
+    writer.save()
+
+excel_buffer.seek(0)
 
 # Botó per descarregar l'arxiu acumulat
-with open(file_acumulat, "rb") as f:
-    excel_bytes = f.read()
-
 st.download_button(
     label="Descarrega l'Excel acumulat d'estadístiques",
-    data=excel_bytes,
+    data=excel_buffer,
     file_name="estadistiques_acumulades.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-# === El teu codi original per visualització ===
+# === Visualització ===
 pid_selection = st.radio("Selecciona PID a visualitzar:", options=['1', '2', 'Ambos'], index=2)
 
 if pid_selection == '1':
@@ -161,26 +153,12 @@ fig1 = px.scatter_3d(
     title=f'Distribució de Tensions Von Mises PID {pid_selection}'
 )
 st.plotly_chart(fig1, use_container_width=True)
-# Gráfica 3D para el PID seleccionado
-st.subheader(f"Gràfica 3D - Tensions Von Mises PID {pid_selection}")
-fig1 = px.scatter_3d(
-    df_sample,
-    x='posx', y='posy', z='posz',
-    color='FunctionTop:StressesVon MisesCentroid',
-    color_continuous_scale=color_scale_sel,
-    range_color=[color_range_min, color_range_max],
-    title=f'Distribució de Tensions Von Mises PID {pid_selection}'
-)
-st.plotly_chart(fig1, use_container_width=True)
 
-# Si selecciona 'Ambos', muestra análisis de contacto
+# Análisis de contacto si PID 'Ambos'
 if pid_selection == 'Ambos':
     st.subheader("Zones de contacte entre PID 1 i PID 2")
 
     dist_umbral = st.slider("Distància màxima per considerar contacte (mm)", 0.1, 10.0, 1.0, step=0.1)
-
-    df_pid_1 = df[df['Pid'] == 1]
-    df_pid_2 = df[df['Pid'] == 2]
 
     coords_1 = df_pid_1[['posx', 'posy', 'posz']].values
     coords_2 = df_pid_2[['posx', 'posy', 'posz']].values
