@@ -9,6 +9,7 @@ from datetime import datetime
 from io import BytesIO
 import hashlib
 
+# Configuració de la pàgina
 st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 st.title("Visualització i Anàlisi de Tensions Von Mises")
 st.write("Carrega un fitxer Excel amb resultats de Von Mises per començar.")
@@ -25,6 +26,7 @@ except Exception as e:
     st.error(f"Error al carregar l'arxiu: {e}")
     st.stop()
 
+# Comprovar columnes necessàries
 required_cols = ['posx', 'posy', 'posz', 'FunctionTop:StressesVon MisesCentroid', 'Pid']
 missing = [col for col in required_cols if col not in df.columns]
 if missing:
@@ -73,18 +75,7 @@ if 'fitxers_carregats' not in st.session_state:
 nom_fitxer = uploaded_file.name
 data_registre = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# Comprovació per evitar duplicats
-if nom_fitxer in st.session_state.fitxers_carregats:
-    st.warning(f"L'arxiu **{nom_fitxer}** ja ha estat carregat anteriorment. No s'han afegit duplicats.")
-else:
-    df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
-    df_noves['Fitxer'] = nom_fitxer
-    df_noves['Data'] = data_registre
-    st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves], ignore_index=True)
-    st.session_state.fitxers_carregats.add(nom_fitxer)
-    st.success(f"Les estadístiques de **{nom_fitxer}** s'han afegit a l'acumulat.")
-
-# Renombrar los elementos (PID -> nombres)
+# Funció per renombrar els elements (PID -> noms més entenedors)
 def renombrar_element(element):
     return {
         'PID 1': 'VE',
@@ -92,20 +83,32 @@ def renombrar_element(element):
         'PID 1+2': 'Total'
     }.get(element, element)
 
-df_noves['Element'] = df_noves['Element'].apply(renombrar_element)
-
-# Extraer nombre base (ej. 'case1' de 'case1_xyz.csv')
+# Extraure el nom base d'un fitxer (ex: 'case1' de 'case1_xyz.csv')
 def base_nom_fitxer(nom):
-    return nom.split('_')[0].split('.')[0]  # Quita extensión también
+    return nom.split('_')[0].split('.')[0]  # Quita extensió també
 
-# Generar color único y consistente por nombre base
+# Generar color únic i consistent per nom base
 def generar_color_per_nom(nom_base):
     hash_object = hashlib.md5(nom_base.encode())
     return '#' + hash_object.hexdigest()[:6]
 
+# Crear nou DataFrame amb les estadístiques i dades addicionals
+df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
+df_noves['Fitxer'] = nom_fitxer
+df_noves['Data'] = data_registre
+
+# Aplicar renombraments i generar noms base i colors
+df_noves['Element'] = df_noves['Element'].apply(renombrar_element)
 df_noves['BaseNom'] = df_noves['Fitxer'].apply(base_nom_fitxer)
 df_noves['Color'] = df_noves['BaseNom'].apply(generar_color_per_nom)
 
+# Comprovar si el fitxer ja s'ha carregat per evitar duplicats
+if nom_fitxer in st.session_state.fitxers_carregats:
+    st.warning(f"L'arxiu **{nom_fitxer}** ja ha estat carregat anteriorment. No s'han afegit duplicats.")
+else:
+    st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves], ignore_index=True)
+    st.session_state.fitxers_carregats.add(nom_fitxer)
+    st.success(f"Les estadístiques de **{nom_fitxer}** s'han afegit a l'acumulat.")
 
 # === Exportar Excel acumulat ===
 excel_buffer = BytesIO()
@@ -120,7 +123,6 @@ st.download_button(
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-
 # === Visualització ===
 pid_selection = st.radio("Selecciona PID a visualitzar:", options=['1', '2', 'Ambos'], index=2)
 
@@ -131,7 +133,7 @@ elif pid_selection == '2':
 else:
     df_sel = df[df['Pid'].isin([1, 2])]
 
-# Estadísticas básicas para el PID seleccionado
+# Estadístiques bàsiques PID seleccionat
 st.subheader(f"Estadístiques bàsiques PID {pid_selection}")
 data_vm = df_sel['FunctionTop:StressesVon MisesCentroid']
 st.write(f"Màxim: {data_vm.max():.4f} MPa")
@@ -144,11 +146,11 @@ st.write(data_vm.quantile([0.25, 0.5, 0.75, 0.95]))
 st.write(f"Asimetria (skewness): {stats.skew(data_vm):.4f}")
 st.write(f"Kurtosis: {stats.kurtosis(data_vm):.4f}")
 
-# Selector de escala de color
+# Selector escala de color
 color_scales = ['Jet', 'Viridis', 'Cividis', 'Plasma', 'Inferno', 'Magma', 'Turbo', 'Hot', 'Cool']
 color_scale_sel = st.selectbox("Selecciona escala de color per la tensió Von Mises:", color_scales, index=0)
 
-# Rango color
+# Rangs color
 min_val = float(data_vm.min())
 max_val = float(data_vm.max())
 st.write("### Ajusta el rang de valors per a l'escala de color (Von Mises)")
@@ -159,11 +161,11 @@ color_range_min, color_range_max = st.slider(
     step=0.01
 )
 
-# Porcentaje de muestra
+# Percentatge mostra
 porcentaje = st.slider(f"Selecciona percentatge de mostra (PID {pid_selection})", 0.01, 1.0, 1.0)
 df_sample = df_sel.sample(frac=porcentaje, random_state=42)
 
-# Gráfica 3D para el PID seleccionado
+# Gràfica 3D per PID seleccionat
 st.subheader(f"Gràfica 3D - Tensions Von Mises PID {pid_selection}")
 fig1 = px.scatter_3d(
     df_sample,
@@ -175,7 +177,7 @@ fig1 = px.scatter_3d(
 )
 st.plotly_chart(fig1, use_container_width=True)
 
-# Análisis de contacto si PID 'Ambos'
+# Anàlisi de contacte si PID 'Ambos'
 if pid_selection == 'Ambos':
     st.subheader("Zones de contacte entre PID 1 i PID 2")
 
@@ -187,7 +189,7 @@ if pid_selection == 'Ambos':
     tree_2 = cKDTree(coords_2)
     contact_idx_1 = tree_2.query_ball_point(coords_1, r=dist_umbral)
     contact_nodes_1 = [i for i, neighbors in enumerate(contact_idx_1) if neighbors]
-
+    
     if contact_nodes_1:
         df_contact_1 = df_pid_1.iloc[contact_nodes_1]
         st.write(f"S'han trobat **{len(df_contact_1)}** nodes de PID 1 amb contacte dins {dist_umbral} mm amb PID 2.")
