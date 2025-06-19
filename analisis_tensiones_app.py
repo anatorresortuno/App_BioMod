@@ -8,7 +8,7 @@ import scipy.stats as stats
 from scipy.spatial import cKDTree
 import io
 from datetime import datetime
-
+    
 st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 
 st.title("Visualització i Anàlisi de Tensions Von Mises")
@@ -84,12 +84,11 @@ st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves
 
 st.success("Les estadístiques s'han afegit a l'acumulat de la sessió.")
 
-# Crear arxiu Excel en memòria
-excel_buffer = io.BytesIO()
+# Guardar a un buffer Excel en memòria
+excel_buffer = BytesIO()
 with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-    st.session_state.df_acumulat.to_excel(writer, index=False, sheet_name='Estadistiques')
-    writer.save()
-
+    df_acumulat.to_excel(writer, index=False)
+    
 excel_buffer.seek(0)
 
 # Botó per descarregar l'arxiu acumulat
