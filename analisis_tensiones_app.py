@@ -76,9 +76,24 @@ if 'df_acumulat' not in st.session_state:
 nom_fitxer = uploaded_file.name
 data_registre = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
 df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
 df_noves['Fitxer'] = nom_fitxer
 df_noves['Data'] = data_registre
+
+# Si ya hay datos acumulados, filtrar los que no están repetidos
+if not st.session_state.df_acumulat.empty:
+    mask = ~df_noves.apply(
+        lambda row: ((st.session_state.df_acumulat['Fitxer'] == row['Fitxer']) & 
+                     (st.session_state.df_acumulat['Element'] == row['Element'])).any(), axis=1)
+    df_noves = df_noves[mask]
+
+if not df_noves.empty:
+    st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves], ignore_index=True)
+    st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
+else:
+    st.warning(f"Totes les estadístiques de '{nom_fitxer}' ja estan acumulades i no s'ha afegit res nou.")
+
 
 # Actualitzar el DataFrame acumulat a la sessió
 st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves], ignore_index=True)
