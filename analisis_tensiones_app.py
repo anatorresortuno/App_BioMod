@@ -80,30 +80,13 @@ df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
 df_noves['Fitxer'] = nom_fitxer
 df_noves['Data'] = data_registre
 
-# Si el acumulado está vacío, añado directamente
-if st.session_state.df_acumulat.empty:
-    st.session_state.df_acumulat = df_noves.copy()
-    st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
+df_acumulat = st.session_state.df_acumulat
+
+if nom_fitxer in df_acumulat['Fitxer'].values:
+    st.warning(f"L'arxiu '{nom_fitxer}' ja existeix a l'acumulat. No s'afegeixen dades duplicades.")
 else:
-    # Filtro filas que no están ya en df_acumulat según 'Fitxer' y 'Element'
-    df_acumulat = st.session_state.df_acumulat
-
-    # Crear un DataFrame con las combinaciones existentes (Fitxer, Element)
-    combinaciones_existentes = df_acumulat[['Fitxer', 'Element']]
-
-    # Crear máscara para filas nuevas que NO estén ya en combinaciones_existentes
-    mask_noves = ~df_noves.apply(
-        lambda row: ((combinaciones_existentes['Fitxer'] == row['Fitxer']) &
-                     (combinaciones_existentes['Element'] == row['Element'])).any(), axis=1
-    )
-
-    df_noves_filtradas = df_noves[mask_noves]
-
-    if not df_noves_filtradas.empty:
-        st.session_state.df_acumulat = pd.concat([df_acumulat, df_noves_filtradas], ignore_index=True)
-        st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
-    else:
-        st.warning(f"Totes les estadístiques de '{nom_fitxer}' ja estan acumulades i no s'ha afegit res nou.")
+    st.session_state.df_acumulat = pd.concat([df_acumulat, df_noves], ignore_index=True)
+    st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
         
 
 # Actualitzar el DataFrame acumulat a la sessió
