@@ -88,7 +88,7 @@ st.success("Les estadístiques s'han afegit a l'acumulat de la sessió.")
 # Guardar a un buffer Excel en memòria
 excel_buffer = BytesIO()
 with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-    df_acumulat.to_excel(writer, index=False)
+    st.session_state.df_acumulat.to_excel(writer, index=False)
     
 excel_buffer.seek(0)
 
