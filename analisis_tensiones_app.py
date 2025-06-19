@@ -110,6 +110,21 @@ else:
     st.session_state.fitxers_carregats.add(nom_fitxer)
     st.success(f"Les estadístiques de **{nom_fitxer}** s'han afegit a l'acumulat.")
 
+# === Funció per aplicar color de text segons columna Color ===
+def aplicar_color_text(df):
+    # Aplica el color a TODAS las celdas de cada fila según el valor en 'Color'
+    def color_row(row):
+        return [f'color: {row.Color}'] * len(row)
+    return df.style.apply(color_row, axis=1)
+
+# Mostrar la taula acumulada amb colors en el text
+st.subheader("Taula acumulada amb colors")
+if not st.session_state.df_acumulat.empty:
+    styled_df = aplicar_color_text(st.session_state.df_acumulat)
+    st.dataframe(styled_df)
+else:
+    st.write("No hi ha dades acumulades encara.")
+
 # === Exportar Excel acumulat ===
 excel_buffer = BytesIO()
 with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
