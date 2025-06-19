@@ -12,7 +12,7 @@ st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 st.title("Visualització i Anàlisi de Tensions Von Mises")
 st.write("Carrega un fitxer Excel amb resultats de Von Mises per començar.")
 
-uploaded_file = st.file_uploader("Selecciona un arxiu Excel", type=["csv"])
+uploaded_file = st.file_uploader("Selecciona un arxiu Excel (CSV)", type=["csv"])
 if uploaded_file is None:
     st.warning("Si us plau, carrega un arxiu Excel per continuar.")
     st.stop()
@@ -32,74 +32,83 @@ if missing:
 st.success("Arxiu carregat correctament")
 st.dataframe(df.head())
 
-# --- Función para calcular estadísticas ---
-def calcular_estadisticas(df_sub, pid_label):
-    data = df_sub['FunctionTop:StressesVon MisesCentroid']
+# Funció per calcular estadístiques de Von Mises per un DataFrame
+def calcular_estadistiques(df_sub, label):
+    data_vm = df_sub['FunctionTop:StressesVon MisesCentroid']
     return {
-        'PID': pid_label,
-        'N_nodes': len(df_sub),
-        'Max': data.max(),
-        'Min': data.min(),
-        'Mean': data.mean(),
-        'Median': data.median(),
-        'Std': data.std(),
-        'Q25': data.quantile(0.25),
-        'Q50': data.quantile(0.5),
-        'Q75': data.quantile(0.75),
-        'Q95': data.quantile(0.95),
-        'Skewness': stats.skew(data),
-        'Kurtosis': stats.kurtosis(data)
+        'Element': label,
+        'Nodes': len(df_sub),
+        'Max': data_vm.max(),
+        'Min': data_vm.min(),
+        'Mean': data_vm.mean(),
+        'Median': data_vm.median(),
+        'StdDev': data_vm.std(),
+        'Q25': data_vm.quantile(0.25),
+        'Q50': data_vm.quantile(0.5),
+        'Q75': data_vm.quantile(0.75),
+        'Q95': data_vm.quantile(0.95),
+        'Skewness': stats.skew(data_vm),
+        'Kurtosis': stats.kurtosis(data_vm)
     }
 
-# Calculamos para pid=1, pid=2 y ambos (1+2)
-stats_1 = calcular_estadisticas(df[df['Pid'] == 1], '1')
-stats_2 = calcular_estadisticas(df[df['Pid'] == 2], '2')
-stats_both = calcular_estadisticas(df[df['Pid'].isin([1,2])], '1+2')
+# Identificar pid=1 i pid=2
+df_pid_1 = df[df['Pid'] == 1]
+df_pid_2 = df[df['Pid'] == 2]
 
-df_stats_new = pd.DataFrame([stats_1, stats_2, stats_both])
+# Calcular estadístiques pid=1, pid=2 i ambdós
+stats_pid_1 = calcular_estadistiques(df_pid_1, 'PID 1')
+stats_pid_2 = calcular_estadistiques(df_pid_2, 'PID 2')
+stats_ambos = calcular_estadistiques(df[df['Pid'].isin([1, 2])], 'PID 1+2')
 
-# Ruta archivo acumulado
-folder_path = ".streamlit"
-os.makedirs(folder_path, exist_ok=True)
-acc_file_path = os.path.join(folder_path, "estadisticas_acumuladas.xlsx")
+# Mostrar estadístiques al Streamlit
+st.subheader("Estadístiques acumulades")
+df_stats_mostrar = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
+st.dataframe(df_stats_mostrar)
 
-# Si existe archivo acumulado, cargarlo y añadir las filas nuevas
-if os.path.exists(acc_file_path):
-    df_acc = pd.read_excel(acc_file_path)
-    df_acc = pd.concat([df_acc, df_stats_new], ignore_index=True)
+# Arxiu acumulatiu d'estadístiques
+file_acumulat = "estadistiques_acumulades.xlsx"
+
+# Llegir arxiu existent o crear nou DataFrame
+if os.path.exists(file_acumulat):
+    try:
+        df_acumulat = pd.read_excel(file_acumulat)
+    except Exception:
+        df_acumulat = pd.DataFrame()
 else:
-    df_acc = df_stats_new.copy()
+    df_acumulat = pd.DataFrame()
 
-# Guardar actualizado
-df_acc.to_excel(acc_file_path, index=False)
+# Afegir columna amb nom del fitxer carregat per identificar dades
+nom_fitxer = uploaded_file.name
 
-st.subheader("Estadístiques bàsiques calculades (nou fitxer)")
-st.dataframe(df_stats_new)
+# Afegir nova fila per cada element amb la info i nom fitxer i data
+from datetime import datetime
+data_registre = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-st.subheader("Estadístiques acumulades (tots fitxers)")
-st.dataframe(df_acc)
+# Crear dataframe per a les noves files
+df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
+df_noves['Fitxer'] = nom_fitxer
+df_noves['Data'] = data_registre
 
-# Botón para descargar archivo acumulado
-import base64
+# Concatenar sense perdre dades anteriors
+df_acumulat = pd.concat([df_acumulat, df_noves], ignore_index=True)
 
-def get_table_download_link(df, filename, text):
-    towrite = df.to_excel(index=False)
-    b64 = base64.b64encode(towrite if isinstance(towrite, bytes) else towrite.encode()).decode()
-    href = f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{text}</a>'
-    return href
+# Guardar arxiu acumulat
+df_acumulat.to_excel(file_acumulat, index=False)
 
-# Más fácil: usar st.download_button con archivo en disco
-with open(acc_file_path, "rb") as f:
-    bytes_data = f.read()
+st.success(f"Les estadístiques s'han guardat i acumulat correctament a {file_acumulat}")
+
+# Botó per descarregar l'arxiu acumulat
+with open(file_acumulat, "rb") as f:
+    excel_bytes = f.read()
 
 st.download_button(
-    label="Descarregar Excel acumulat d'estadístiques",
-    data=bytes_data,
+    label="Descarrega l'Excel acumulat d'estadístiques",
+    data=excel_bytes,
     file_name="estadistiques_acumulades.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-# --- Resto de tu código para visualización y análisis ---
+# === El teu codi original per visualització ===
 pid_selection = st.radio("Selecciona PID a visualitzar:", options=['1', '2', 'Ambos'], index=2)
 
 if pid_selection == '1':
@@ -109,6 +118,7 @@ elif pid_selection == '2':
 else:
     df_sel = df[df['Pid'].isin([1, 2])]
 
+# Estadísticas básicas para el PID seleccionado
 st.subheader(f"Estadístiques bàsiques PID {pid_selection}")
 data_vm = df_sel['FunctionTop:StressesVon MisesCentroid']
 st.write(f"Màxim: {data_vm.max():.4f} MPa")
@@ -140,6 +150,17 @@ color_range_min, color_range_max = st.slider(
 porcentaje = st.slider(f"Selecciona percentatge de mostra (PID {pid_selection})", 0.01, 1.0, 1.0)
 df_sample = df_sel.sample(frac=porcentaje, random_state=42)
 
+# Gráfica 3D para el PID seleccionado
+st.subheader(f"Gràfica 3D - Tensions Von Mises PID {pid_selection}")
+fig1 = px.scatter_3d(
+    df_sample,
+    x='posx', y='posy', z='posz',
+    color='FunctionTop:StressesVon MisesCentroid',
+    color_continuous_scale=color_scale_sel,
+    range_color=[color_range_min, color_range_max],
+    title=f'Distribució de Tensions Von Mises PID {pid_selection}'
+)
+st.plotly_chart(fig1, use_container_width=True)
 # Gráfica 3D para el PID seleccionado
 st.subheader(f"Gràfica 3D - Tensions Von Mises PID {pid_selection}")
 fig1 = px.scatter_3d(
