@@ -81,7 +81,7 @@ df_noves['Data'] = data_registre
 
 df_acumulat = st.session_state.df_acumulat
 
-if nom_fitxer in df_acumulat['Fitxer'].values:
+if 'Fitxer' in df_acumulat.columns and nom_fitxer in df_acumulat['Fitxer'].values:
     st.warning(f"L'arxiu '{nom_fitxer}' ja existeix a l'acumulat. No s'afegeixen dades duplicades.")
 else:
     st.session_state.df_acumulat = pd.concat([df_acumulat, df_noves], ignore_index=True)
