@@ -72,7 +72,6 @@ st.dataframe(df_stats_mostrar)
 if 'df_acumulat' not in st.session_state:
     st.session_state.df_acumulat = pd.DataFrame()
 
-# Afegir columna amb nom del fitxer carregat i data
 nom_fitxer = uploaded_file.name
 data_registre = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -87,12 +86,7 @@ if nom_fitxer in df_acumulat['Fitxer'].values:
 else:
     st.session_state.df_acumulat = pd.concat([df_acumulat, df_noves], ignore_index=True)
     st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
-        
 
-# Actualitzar el DataFrame acumulat a la sessió
-st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves], ignore_index=True)
-
-st.success("Les estadístiques s'han afegit a l'acumulat de la sessió.")
 
 # Guardar a un buffer Excel en memòria
 excel_buffer = BytesIO()
