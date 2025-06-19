@@ -7,6 +7,7 @@ import scipy.stats as stats
 from scipy.spatial import cKDTree
 from datetime import datetime
 from io import BytesIO
+import hashlib
 
 st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 st.title("Visualització i Anàlisi de Tensions Von Mises")
@@ -82,6 +83,29 @@ else:
     st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves], ignore_index=True)
     st.session_state.fitxers_carregats.add(nom_fitxer)
     st.success(f"Les estadístiques de **{nom_fitxer}** s'han afegit a l'acumulat.")
+
+# Renombrar los elementos (PID -> nombres)
+def renombrar_element(element):
+    return {
+        'PID 1': 'VE',
+        'PID 2': 'Maxilar',
+        'PID 1+2': 'Total'
+    }.get(element, element)
+
+df_noves['Element'] = df_noves['Element'].apply(renombrar_element)
+
+# Extraer nombre base (ej. 'case1' de 'case1_xyz.csv')
+def base_nom_fitxer(nom):
+    return nom.split('_')[0].split('.')[0]  # Quita extensión también
+
+# Generar color único y consistente por nombre base
+def generar_color_per_nom(nom_base):
+    hash_object = hashlib.md5(nom_base.encode())
+    return '#' + hash_object.hexdigest()[:6]
+
+df_noves['BaseNom'] = df_noves['Fitxer'].apply(base_nom_fitxer)
+df_noves['Color'] = df_noves['BaseNom'].apply(generar_color_per_nom)
+
 
 # === Exportar Excel acumulat ===
 excel_buffer = BytesIO()
