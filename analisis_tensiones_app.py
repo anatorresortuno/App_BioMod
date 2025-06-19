@@ -12,6 +12,7 @@ st.set_page_config(page_title="Anàlisi Von Mises", layout="wide")
 st.title("Visualització i Anàlisi de Tensions Von Mises")
 st.write("Carrega un fitxer Excel amb resultats de Von Mises per començar.")
 
+# === Càrrega de fitxer ===
 uploaded_file = st.file_uploader("Selecciona un arxiu Excel (CSV)", type=["csv"])
 if uploaded_file is None:
     st.warning("Si us plau, carrega un arxiu Excel per continuar.")
@@ -32,7 +33,7 @@ if missing:
 st.success("Arxiu carregat correctament")
 st.dataframe(df.head())
 
-# Funció per calcular estadístiques de Von Mises per un DataFrame
+# === Funció per calcular estadístiques ===
 def calcular_estadistiques(df_sub, label):
     data_vm = df_sub['FunctionTop:StressesVon MisesCentroid']
     return {
@@ -51,11 +52,9 @@ def calcular_estadistiques(df_sub, label):
         'Kurtosis': stats.kurtosis(data_vm)
     }
 
-# Identificar pid=1 i pid=2
+# === Estadístiques per PID ===
 df_pid_1 = df[df['Pid'] == 1]
 df_pid_2 = df[df['Pid'] == 2]
-
-# Calcular estadístiques
 stats_pid_1 = calcular_estadistiques(df_pid_1, 'PID 1')
 stats_pid_2 = calcular_estadistiques(df_pid_2, 'PID 2')
 stats_ambos = calcular_estadistiques(df[df['Pid'].isin([1, 2])], 'PID 1+2')
@@ -64,29 +63,27 @@ df_stats_mostrar = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
 st.subheader("Estadístiques acumulades")
 st.dataframe(df_stats_mostrar)
 
-# Preparar dades per acumular
-nom_fitxer = uploaded_file.name
-data_registre = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
-df_noves['Fitxer'] = nom_fitxer
-df_noves['Data'] = data_registre
-
-# Inicialitzar acumulador
+# === Acumulador en sessió ===
 if 'df_acumulat' not in st.session_state:
     st.session_state.df_acumulat = pd.DataFrame()
+if 'fitxers_carregats' not in st.session_state:
+    st.session_state.fitxers_carregats = set()
 
-# Eliminar estadístiques existents del mateix fitxer abans d'afegir les noves
-st.session_state.df_acumulat = st.session_state.df_acumulat[
-    st.session_state.df_acumulat['Fitxer'] != nom_fitxer
-]
+nom_fitxer = uploaded_file.name
+data_registre = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# Afegir noves estadístiques
-st.session_state.df_acumulat = pd.concat(
-    [st.session_state.df_acumulat, df_noves], ignore_index=True
-)
-st.success(f"Les estadístiques de '{nom_fitxer}' s'han afegit a l'acumulat de la sessió.")
+# Comprovació per evitar duplicats
+if nom_fitxer in st.session_state.fitxers_carregats:
+    st.warning(f"L'arxiu **{nom_fitxer}** ja ha estat carregat anteriorment. No s'han afegit duplicats.")
+else:
+    df_noves = pd.DataFrame([stats_pid_1, stats_pid_2, stats_ambos])
+    df_noves['Fitxer'] = nom_fitxer
+    df_noves['Data'] = data_registre
+    st.session_state.df_acumulat = pd.concat([st.session_state.df_acumulat, df_noves], ignore_index=True)
+    st.session_state.fitxers_carregats.add(nom_fitxer)
+    st.success(f"Les estadístiques de **{nom_fitxer}** s'han afegit a l'acumulat.")
 
-# Guardar Excel
+# === Exportar Excel acumulat ===
 excel_buffer = BytesIO()
 with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
     st.session_state.df_acumulat.to_excel(writer, index=False)
