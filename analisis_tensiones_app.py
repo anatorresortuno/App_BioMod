@@ -21,7 +21,7 @@ if uploaded_file is None:
     st.stop()
 
 try:
-    df = pd.read_csv(uploaded_file, error_bad_lines=False, warn_bad_lines=True)
+    df = pd.read_csv(uploaded_file, on_bad_lines='skip', warn_bad_lines=True)
 except Exception as e:
     st.error(f"Error al carregar l'arxiu: {e}")
     st.stop()
