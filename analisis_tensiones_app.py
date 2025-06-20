@@ -21,10 +21,32 @@ if uploaded_file is None:
     st.stop()
 
 try:
-    df = pd.read_csv(uploaded_file, on_bad_lines='skip')
+    expected_columns = 32  # Canvia aquest número si saps el nombre exacte de columnes
+
+    # Llegeix el fitxer com a text
+    content = uploaded_file.getvalue().decode("utf-8").splitlines()
+    cleaned_data = []
+
+    for i, line in enumerate(content, start=1):
+        fields = line.strip().split(',')
+
+        if len(fields) < expected_columns:
+            fields.extend([''] * (expected_columns - len(fields)))
+        elif len(fields) > expected_columns:
+            fields = fields[:expected_columns]
+
+        cleaned_data.append(fields)
+
+    df = pd.DataFrame(cleaned_data)
+
+    # Opcional: assigna noms de columna si el CSV els té
+    header = cleaned_data[0]
+    df.columns = header
+    df = df[1:]  # Treu la fila de capçalera de les dades
 except Exception as e:
-    st.error(f"Error al carregar l'arxiu: {e}")
+    st.error(f"Error al processar l'arxiu: {e}")
     st.stop()
+
 
 # Comprovar columnes necessàries
 required_cols = ['posx', 'posy', 'posz', 'FunctionTop:StressesVon MisesCentroid', 'Pid']
