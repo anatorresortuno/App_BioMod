@@ -39,6 +39,7 @@ st.dataframe(df.head())
 # === Funció per calcular estadístiques ===
 def calcular_estadistiques(df_sub, label):
     data_vm = df_sub['FunctionTop:StressesVon MisesCentroid']
+    data_vm = pd.to_numeric(data_vm, errors='coerce').dropna()
     return {
         'Element': label,
         'Nodes': len(df_sub),
